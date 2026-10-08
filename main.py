@@ -6,6 +6,8 @@ from pc_helper.system import CleanupService, DiskService, NetworkService, Proces
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
+APP_ICON = "assets/pc-helper.svg"
+
 
 class MetricCard(ctk.CTkFrame):
     def __init__(self, master, title, icon):
@@ -38,10 +40,21 @@ class PCApp(ctk.CTk):
         self.grid_rowconfigure(1, weight=1)
         self._drag = (0, 0)
         self.settings = {"topmost": True, "refresh_ms": 1000}
-        self._build_titlebar()
+        self._build_splash()
         self._build_shell()
         self.show_dashboard()
         self._tick()
+
+    def _build_splash(self):
+        splash = ctk.CTkFrame(self, corner_radius=0, fg_color="#111117")
+        splash.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        ctk.CTkLabel(splash, text="▣", font=ctk.CTkFont(size=52, weight="bold"), text_color="#8b6cff").pack(pady=(150, 8))
+        ctk.CTkLabel(splash, text="PC HELPER", font=ctk.CTkFont(size=28, weight="bold")).pack()
+        ctk.CTkLabel(splash, text=f"v{__version__}  •  Windows utility toolkit", text_color="gray").pack(pady=6)
+        self.splash_bar = ctk.CTkProgressBar(splash, width=260, height=6)
+        self.splash_bar.pack(pady=22)
+        self.splash_bar.set(0.35)
+        self.after(450, splash.destroy)
 
     def _build_titlebar(self):
         bar = ctk.CTkFrame(self, height=48, corner_radius=0, fg_color="#15151c")
