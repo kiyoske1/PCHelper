@@ -135,7 +135,7 @@ class PCApp(ctk.CTk):
         self.content.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(self.nav, text="PC HELPER", font=ctk.CTkFont(size=18, weight="bold")).pack(padx=18, pady=(24, 4), anchor="w")
         ctk.CTkLabel(self.nav, text="WINDOWS TOOLKIT", text_color="gray", font=ctk.CTkFont(size=10)).pack(padx=18, anchor="w")
-        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("⚙️  Processes", self.show_processes), ("💾  Disk Analyzer", self.show_disk), ("⚙️  Settings", self.show_settings), ("ℹ️  About", self.show_about)]:
+        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("🧩  Processes", self.show_processes), ("💾  Disk Analyzer", self.show_disk), ("⚙️  Settings", self.show_settings), ("ℹ️  About", self.show_about)]:
             ctk.CTkButton(self.nav, text=label, anchor="w", height=38, fg_color="transparent", hover_color="#252531", command=method).pack(fill="x", padx=10, pady=3)
         ctk.CTkLabel(self.nav, text="READY • LOCAL", text_color="#6f8", font=ctk.CTkFont(size=10)).pack(side="bottom", padx=18, pady=18, anchor="w")
 
