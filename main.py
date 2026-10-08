@@ -201,26 +201,48 @@ class PCApp(ctk.CTk):
 
     def show_disk(self):
         self.clear()
-        self.heading("Disk Analyzer", "See drive capacity and the largest folders at a glance.")
-        usage = DiskService.usage()
+        self.heading("Disk Analyzer", "Choose a drive and inspect its largest top-level folders.")
         card = ctk.CTkFrame(self.content, corner_radius=18)
         card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
-        card.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(card, text=f'Drive  {usage["path"]}', font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, padx=22, pady=(20, 2), sticky="w")
-        ctk.CTkLabel(card, text=f'{format_size(usage["used"])} used  •  {format_size(usage["free"])} free  •  {format_size(usage["total"])} total', text_color="gray").grid(row=1, column=0, padx=22, sticky="w")
-        bar = ctk.CTkProgressBar(card, height=10)
-        bar.grid(row=2, column=0, padx=22, pady=(14, 22), sticky="ew")
-        bar.set(usage["percent"] / 100)
-        self.disk_status = ctk.CTkLabel(self.content, text=f'{usage["percent"]:.0f}% used', text_color="gray")
-        self.disk_status.grid(row=3, column=0, sticky="w", padx=12, pady=(8, 4))
-        table = ctk.CTkScrollableFrame(self.content, corner_radius=18)
-        table.grid(row=4, column=0, sticky="ew", padx=8, pady=8)
-        table.grid_columnconfigure(1, weight=1)
+        partitions = DiskService.partitions()
+        values = [p["mountpoint"] for p in partitions] or [DiskService.usage()["path"]]
+        self.disk_drive = ctk.CTkOptionMenu(card, values=values)
+        self.disk_drive.set(values[0])
+        self.disk_drive.pack(side="left", padx=20, pady=20)
+        self.disk_analyze_btn = ctk.CTkButton(card, text="ANALYZE", command=self.analyze_disk)
+        self.disk_analyze_btn.pack(side="left", padx=5)
+        self.disk_summary = ctk.CTkLabel(card, text="Select a drive to begin.", text_color="gray")
+        self.disk_summary.pack(side="left", padx=15)
+        self.disk_table = ctk.CTkScrollableFrame(self.content, corner_radius=18)
+        self.disk_table.grid(row=3, column=0, sticky="ew", padx=8, pady=8)
+        self._draw_disk_table([])
+
+    def _draw_disk_table(self, entries):
+        for widget in self.disk_table.winfo_children():
+            widget.destroy()
+        self.disk_table.grid_columnconfigure(0, weight=1)
         for col, label in enumerate(["FOLDER / FILE", "SIZE"]):
-            ctk.CTkLabel(table, text=label, text_color="gray", font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=14, pady=9, sticky="w")
-        for row, item in enumerate(DiskService.largest_entries(), start=1):
-            ctk.CTkLabel(table, text=item["name"]).grid(row=row, column=0, padx=14, pady=6, sticky="w")
-            ctk.CTkLabel(table, text=format_size(item["size"])).grid(row=row, column=1, padx=14, pady=6, sticky="e")
+            ctk.CTkLabel(self.disk_table, text=label, text_color="gray", font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=14, pady=9, sticky="w")
+        for row, item in enumerate(entries, start=1):
+            ctk.CTkLabel(self.disk_table, text=item["name"]).grid(row=row, column=0, padx=14, pady=6, sticky="w")
+            ctk.CTkLabel(self.disk_table, text=format_size(item["size"])).grid(row=row, column=1, padx=14, pady=6, sticky="e")
+
+    def analyze_disk(self):
+        path = self.disk_drive.get()
+        self.disk_analyze_btn.configure(state="disabled", text="ANALYZING...")
+        self.disk_summary.configure(text="Scanning drive, this may take a moment...")
+        self.run_async(lambda: DiskService.largest_entries(path), lambda entries: self._disk_finished(path, entries))
+
+    def _disk_finished(self, path, entries):
+        if not hasattr(self, "disk_table") or not self.disk_table.winfo_exists():
+            return
+        self.disk_analyze_btn.configure(state="normal", text="ANALYZE")
+        self._draw_disk_table(entries)
+        try:
+            usage = DiskService.usage(path)
+            self.disk_summary.configure(text=f'{usage["percent"]:.0f}% used  •  {format_size(usage["free"])} free')
+        except OSError as error:
+            self.disk_summary.configure(text=f"Drive error: {error}")
 
     def show_processes(self):
         self.clear()
