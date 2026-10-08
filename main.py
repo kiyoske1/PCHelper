@@ -261,6 +261,13 @@ class PCApp(ctk.CTk):
         self.refresh_processes()
 
     def refresh_processes(self):
+        if not hasattr(self, "process_table") or not self.process_table.winfo_exists() or self._task_running:
+            return
+        self.process_status.configure(text="Refreshing processes...")
+        query = self.process_search.get() if hasattr(self, "process_search") else ""
+        self.run_async(lambda: ProcessService.list_processes(query), self._render_processes)
+
+    def _render_processes(self, rows):
         if not hasattr(self, "process_table") or not self.process_table.winfo_exists():
             return
         for widget in self.process_table.winfo_children():
@@ -268,7 +275,6 @@ class PCApp(ctk.CTk):
         headers = ["PID", "PROCESS", "CPU", "RAM", "ACTION"]
         for col, label in enumerate(headers):
             ctk.CTkLabel(self.process_table, text=label, text_color="gray", font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=8, sticky="w")
-        rows = ProcessService.list_processes(self.process_search.get() if hasattr(self, "process_search") else "")
         for row, item in enumerate(rows[:100], start=1):
             ctk.CTkLabel(self.process_table, text=str(item["pid"])).grid(row=row, column=0, padx=10, pady=5, sticky="w")
             ctk.CTkLabel(self.process_table, text=item["name"]).grid(row=row, column=1, padx=10, pady=5, sticky="w")
@@ -284,9 +290,13 @@ class PCApp(ctk.CTk):
         dialog = ctk.CTkInputDialog(text=f"Type END to terminate PID {pid}:", title="Confirm process termination")
         if dialog.get_input() != "END":
             return
-        ok, message = ProcessService.terminate(pid)
-        self.process_status.configure(text=message)
-        self.after(400, self.refresh_processes)
+        self.run_async(lambda: ProcessService.terminate(pid), self._process_end_result)
+
+    def _process_end_result(self, result):
+        _ok, message = result
+        if hasattr(self, "process_status") and self.process_status.winfo_exists():
+            self.process_status.configure(text=message)
+        self.after(300, self.refresh_processes)
 
     def show_settings(self):
         self.clear()
