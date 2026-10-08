@@ -158,7 +158,7 @@ class PCApp(ctk.CTk):
 
     def show_cleanup(self):
         self.clear()
-        self.heading("Cleanup", "Remove temporary files that Windows no longer needs.")
+        self.heading("Cleanup", "Remove temporary files older than one hour. Active files are left untouched.")
         card = ctk.CTkFrame(self.content, corner_radius=18)
         card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
         self.cleanup_value = ctk.CTkLabel(card, text="Not scanned", font=ctk.CTkFont(size=30, weight="bold"))
@@ -419,10 +419,15 @@ class PCApp(ctk.CTk):
         self.pin.configure(text="📌" if state else "📍")
         SettingsStore.save(self.settings)
 
+    def close_app(self):
+        self._closing = True
+        SettingsStore.save(self.settings)
+        self.destroy()
+
     def iconify_window(self):
         self.overrideredirect(False)
         self.iconify()
-        self.after(100, lambda: self.overrideredirect(True))
+        self.after(200, lambda: self.overrideredirect(True))
 
 
 if __name__ == "__main__":
