@@ -138,6 +138,8 @@ class NetworkService:
 
     @staticmethod
     def flush_dns():
+        if os.name != "nt":
+            return False, "DNS flush is available on Windows only."
         try:
             result = subprocess.run(
                 ["ipconfig", "/flushdns"],
@@ -169,6 +171,8 @@ class WindowsTools:
         command = WindowsTools.TOOLS.get(name)
         if not command:
             return False, "Unknown Windows tool."
+        if os.name != "nt":
+            return False, "Windows tools are available on Windows only."
         try:
             subprocess.Popen(command, shell=False)
             return True, f"{name} opened."
