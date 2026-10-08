@@ -86,22 +86,25 @@ class CleanupService:
                         continue
         return total
 
-    @staticmethod
-    def clean():
+    @classmethod
+    def clean(cls):
         removed_bytes = 0
         removed_files = 0
-        for folder in CleanupService.paths():
+        for folder in cls.paths():
             if not folder.exists():
                 continue
             for item in sorted(folder.rglob("*"), reverse=True):
                 try:
-                    if item.is_file() or item.is_symlink():
+                    if cls._eligible(item):
                         size = item.stat().st_size if item.is_file() else 0
                         item.unlink()
                         removed_bytes += size
                         removed_files += 1
-                    elif item.is_dir():
-                        item.rmdir()
+                    elif item.is_dir() and not item.is_symlink():
+                        try:
+                            item.rmdir()
+                        except OSError:
+                            pass
                 except OSError:
                     continue
         return removed_files, removed_bytes
