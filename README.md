@@ -62,7 +62,7 @@ PCHelper/
 - [x] Floating UI
 - [x] Sidebar navigation
 - [x] Tests and lint configuration
-- [ ] Process manager
+- [x] Process manager
 - [ ] Disk analyzer
 - [ ] Settings
 - [ ] Windows installer
