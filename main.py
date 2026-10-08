@@ -307,16 +307,30 @@ class PCApp(ctk.CTk):
         ctk.CTkLabel(card, text="Python • CustomTkinter • psutil\nBuilt by Kiyoske\nNo telemetry. No account required.", justify="center", text_color="gray").pack(pady=(0, 28))
 
     def scan_cleanup(self):
-        size = CleanupService.scan()
+        self.cleanup_status.configure(text="Scanning temporary files...")
+        self.run_async(CleanupService.scan, self._cleanup_scanned)
+
+    def _cleanup_scanned(self, size):
+        if not hasattr(self, "cleanup_value") or not self.cleanup_value.winfo_exists():
+            return
         self.cleanup_value.configure(text=format_size(size))
-        self.cleanup_status.configure(text=f"Found {format_size(size)} of temporary files.")
+        self.cleanup_status.configure(text=f"Found {format_size(size)} of eligible temporary files.")
 
     def clean_cleanup(self):
-        result = ctk.CTkInputDialog(text="Type CLEAN to confirm:", title="Confirm cleanup").get_input()
+        result = ctk.CTkInputDialog(
+            text="Type CLEAN to confirm removal of files older than one hour:",
+            title="Confirm cleanup",
+        ).get_input()
         if result != "CLEAN":
             return
-        files, size = CleanupService.clean()
-        self.cleanup_value.configure(text="0 B")
+        self.cleanup_status.configure(text="Cleaning temporary files...")
+        self.run_async(CleanupService.clean, self._cleanup_finished)
+
+    def _cleanup_finished(self, result):
+        if not hasattr(self, "cleanup_value") or not self.cleanup_value.winfo_exists():
+            return
+        files, size = result
+        self.cleanup_value.configure(text=format_size(size))
         self.cleanup_status.configure(text=f"Removed {format_size(size)} from {files} files.")
 
     def run_ping(self):
