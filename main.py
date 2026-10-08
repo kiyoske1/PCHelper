@@ -1,7 +1,7 @@
 import customtkinter as ctk
 
 from pc_helper import __version__
-from pc_helper.system import CleanupService, NetworkService, ProcessService, SystemService, WindowsTools, format_size
+from pc_helper.system import CleanupService, DiskService, NetworkService, ProcessService, SystemService, WindowsTools, format_size
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -69,7 +69,7 @@ class PCApp(ctk.CTk):
         self.content.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(self.nav, text="PC HELPER", font=ctk.CTkFont(size=18, weight="bold")).pack(padx=18, pady=(24, 4), anchor="w")
         ctk.CTkLabel(self.nav, text="WINDOWS TOOLKIT", text_color="gray", font=ctk.CTkFont(size=10)).pack(padx=18, anchor="w")
-        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("⚙️  Processes", self.show_processes), ("ℹ️  About", self.show_about)]:
+        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("⚙️  Processes", self.show_processes), ("💾  Disk Analyzer", self.show_disk), ("ℹ️  About", self.show_about)]:
             ctk.CTkButton(self.nav, text=label, anchor="w", height=38, fg_color="transparent", hover_color="#252531", command=method).pack(fill="x", padx=10, pady=3)
         ctk.CTkLabel(self.nav, text="READY • LOCAL", text_color="#6f8", font=ctk.CTkFont(size=10)).pack(side="bottom", padx=18, pady=18, anchor="w")
 
@@ -139,6 +139,29 @@ class PCApp(ctk.CTk):
         card.grid_columnconfigure((0, 1, 2), weight=1)
         for i, name in enumerate(WindowsTools.TOOLS):
             ctk.CTkButton(card, text=name, height=42, command=lambda n=name: self.open_tool(n)).grid(row=i//3, column=i%3, padx=7, pady=7, sticky="ew")
+
+    def show_disk(self):
+        self.clear()
+        self.heading("Disk Analyzer", "See drive capacity and the largest folders at a glance.")
+        usage = DiskService.usage()
+        card = ctk.CTkFrame(self.content, corner_radius=18)
+        card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
+        card.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(card, text=f'Drive  {usage["path"]}', font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, padx=22, pady=(20, 2), sticky="w")
+        ctk.CTkLabel(card, text=f'{format_size(usage["used"])} used  •  {format_size(usage["free"])} free  •  {format_size(usage["total"])} total', text_color="gray").grid(row=1, column=0, padx=22, sticky="w")
+        bar = ctk.CTkProgressBar(card, height=10)
+        bar.grid(row=2, column=0, padx=22, pady=(14, 22), sticky="ew")
+        bar.set(usage["percent"] / 100)
+        self.disk_status = ctk.CTkLabel(self.content, text=f'{usage["percent"]:.0f}% used', text_color="gray")
+        self.disk_status.grid(row=3, column=0, sticky="w", padx=12, pady=(8, 4))
+        table = ctk.CTkScrollableFrame(self.content, corner_radius=18)
+        table.grid(row=4, column=0, sticky="ew", padx=8, pady=8)
+        table.grid_columnconfigure(1, weight=1)
+        for col, label in enumerate(["FOLDER / FILE", "SIZE"]):
+            ctk.CTkLabel(table, text=label, text_color="gray", font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=14, pady=9, sticky="w")
+        for row, item in enumerate(DiskService.largest_entries(), start=1):
+            ctk.CTkLabel(table, text=item["name"]).grid(row=row, column=0, padx=14, pady=6, sticky="w")
+            ctk.CTkLabel(table, text=format_size(item["size"])).grid(row=row, column=1, padx=14, pady=6, sticky="e")
 
     def show_processes(self):
         self.clear()
