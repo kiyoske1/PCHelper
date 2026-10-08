@@ -27,15 +27,28 @@ jobs:
       - name: Build executable
         run: pyinstaller --noconfirm --clean --onefile --windowed --name PC-Helper main.py
 
-      - name: Upload artifact
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          copy dist\PC-Helper.exe installer\dist\PC-Helper.exe
+          makensis installer\PC-Helper.nsi
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: PC-Helper-Windows
-          path: dist/PC-Helper.exe
+          path: |
+            dist/PC-Helper.exe
+            installer/PC-Helper-Setup.exe
 
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/PC-Helper.exe
+          files: |
+            dist/PC-Helper.exe
+            installer/PC-Helper-Setup.exe
           generate_release_notes: true
