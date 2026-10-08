@@ -37,6 +37,7 @@ class PCApp(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         self._drag = (0, 0)
+        self.settings = {"topmost": True, "refresh_ms": 1000}
         self._build_titlebar()
         self._build_shell()
         self.show_dashboard()
@@ -69,7 +70,7 @@ class PCApp(ctk.CTk):
         self.content.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(self.nav, text="PC HELPER", font=ctk.CTkFont(size=18, weight="bold")).pack(padx=18, pady=(24, 4), anchor="w")
         ctk.CTkLabel(self.nav, text="WINDOWS TOOLKIT", text_color="gray", font=ctk.CTkFont(size=10)).pack(padx=18, anchor="w")
-        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("⚙️  Processes", self.show_processes), ("💾  Disk Analyzer", self.show_disk), ("ℹ️  About", self.show_about)]:
+        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("⚙️  Processes", self.show_processes), ("💾  Disk Analyzer", self.show_disk), ("⚙️  Settings", self.show_settings), ("ℹ️  About", self.show_about)]:
             ctk.CTkButton(self.nav, text=label, anchor="w", height=38, fg_color="transparent", hover_color="#252531", command=method).pack(fill="x", padx=10, pady=3)
         ctk.CTkLabel(self.nav, text="READY • LOCAL", text_color="#6f8", font=ctk.CTkFont(size=10)).pack(side="bottom", padx=18, pady=18, anchor="w")
 
@@ -207,6 +208,35 @@ class PCApp(ctk.CTk):
         self.process_status.configure(text=message)
         self.after(400, self.refresh_processes)
 
+    def show_settings(self):
+        self.clear()
+        self.heading("Settings", "Control the floating window and monitoring refresh rate.")
+        card = ctk.CTkFrame(self.content, corner_radius=18)
+        card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
+        top_row = ctk.CTkFrame(card, fg_color="transparent")
+        top_row.pack(fill="x", padx=20, pady=(22, 10))
+        ctk.CTkLabel(top_row, text="Always on top", font=ctk.CTkFont(weight="bold")).pack(side="left")
+        self.topmost_switch = ctk.CTkSwitch(top_row, text="", command=self.apply_topmost)
+        self.topmost_switch.pack(side="right")
+        self.topmost_switch.select() if self.settings["topmost"] else self.topmost_switch.deselect()
+        ctk.CTkLabel(card, text="Monitor refresh interval", text_color="gray").pack(anchor="w", padx=20, pady=(10, 4))
+        self.refresh_label = ctk.CTkLabel(card, text="1.0 second")
+        self.refresh_label.pack(anchor="w", padx=20)
+        self.refresh_slider = ctk.CTkSlider(card, from_=0.5, to=5.0, number_of_steps=9, command=self.update_refresh_label)
+        self.refresh_slider.set(self.settings["refresh_ms"] / 1000)
+        self.refresh_slider.pack(fill="x", padx=20, pady=(8, 24))
+
+    def apply_topmost(self):
+        state = bool(self.topmost_switch.get())
+        self.settings["topmost"] = state
+        self.attributes("-topmost", state)
+        self.pin.configure(text="📌" if state else "📍")
+
+    def update_refresh_label(self, value):
+        seconds = float(value)
+        self.settings["refresh_ms"] = int(seconds * 1000)
+        self.refresh_label.configure(text=f"{seconds:.1f} second" + ("" if seconds == 1 else "s"))
+
     def show_about(self):
         self.clear()
         self.heading("About", "PC Helper is a local-first Windows utility toolkit.")
@@ -249,7 +279,7 @@ class PCApp(ctk.CTk):
             self.cpu.update(data["cpu"], f'{data["cpu"]:.1f}% usage')
             self.ram.update(data["ram"], f'{format_size(data["ram_used"])} / {format_size(data["ram_total"])}')
             self.disk.update(data["disk"], f'{format_size(data["disk_used"])} / {format_size(data["disk_total"])}')
-        self.after(1000, self._tick)
+        self.after(self.settings["refresh_ms"], self._tick)
 
     def start_drag(self, event):
         self._drag = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
