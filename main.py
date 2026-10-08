@@ -187,7 +187,8 @@ class PCApp(ctk.CTk):
         self.heading("Network", "Basic connectivity and DNS diagnostics.")
         card = ctk.CTkFrame(self.content, corner_radius=18)
         card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
-        ctk.CTkLabel(card, text=f"Local IP  {NetworkService.local_ip()}", font=ctk.CTkFont(size=16, weight="bold")).pack(padx=24, pady=(24, 8))
+        self.net_ip_label = ctk.CTkLabel(card, text="Local IP  detecting...", font=ctk.CTkFont(size=16, weight="bold"))
+        self.net_ip_label.pack(padx=24, pady=(24, 8))
         self.net_status = ctk.CTkLabel(card, text="READY", text_color="gray")
         self.net_status.pack()
         self.net_detail = ctk.CTkLabel(card, text="", text_color="gray")
@@ -199,6 +200,11 @@ class PCApp(ctk.CTk):
         row.pack(pady=20)
         ctk.CTkButton(row, text="📡  PING", command=self.run_ping, width=140).pack(side="left", padx=5)
         ctk.CTkButton(row, text="🔄  FLUSH DNS", command=self.flush_dns, width=140).pack(side="left", padx=5)
+        self.run_async(NetworkService.local_ip, self._local_ip_finished)
+
+    def _local_ip_finished(self, address):
+        if hasattr(self, "net_ip_label") and self.net_ip_label.winfo_exists():
+            self.net_ip_label.configure(text=f"Local IP  {address}")
 
     def show_tools(self):
         self.clear()
