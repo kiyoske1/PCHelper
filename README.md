@@ -2,15 +2,19 @@
 
 A lightweight Windows utility toolkit built with Python.
 
-## v0.3.0
+## v0.4.0
 
-PC Helper now includes a live system monitor and temporary file cleanup:
+PC Helper now includes live monitoring, cleanup tools, and network diagnostics:
 
 - ⚡ CPU usage
 - 🧠 RAM usage
 - 💾 Disk usage
 - 🧹 Temporary file scanner
 - 🗑️ Temporary file cleanup with confirmation
+- 🌐 Network connectivity test
+- 📡 Ping diagnostics
+- 🔄 DNS cache flush
+- 💻 Local IP detection
 - 💻 CPU, Windows and system information
 - 🌙 Dark desktop UI
 
@@ -26,7 +30,7 @@ python main.py
 - [x] System information
 - [x] Live CPU/RAM/Disk monitor
 - [x] Temporary file cleanup
-- [ ] Network diagnostics
+- [x] Network diagnostics
 - [ ] Windows tools launcher
 - [ ] Disk tools
 - [ ] Process manager
