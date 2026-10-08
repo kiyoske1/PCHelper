@@ -1,7 +1,7 @@
 import customtkinter as ctk
 
 from pc_helper import __version__
-from pc_helper.system import CleanupService, NetworkService, SystemService, WindowsTools, format_size
+from pc_helper.system import CleanupService, NetworkService, ProcessService, SystemService, WindowsTools, format_size
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -69,7 +69,7 @@ class PCApp(ctk.CTk):
         self.content.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(self.nav, text="PC HELPER", font=ctk.CTkFont(size=18, weight="bold")).pack(padx=18, pady=(24, 4), anchor="w")
         ctk.CTkLabel(self.nav, text="WINDOWS TOOLKIT", text_color="gray", font=ctk.CTkFont(size=10)).pack(padx=18, anchor="w")
-        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("ℹ️  About", self.show_about)]:
+        for label, method in [("📊  Monitor", self.show_dashboard), ("🧹  Cleanup", self.show_cleanup), ("🌐  Network", self.show_network), ("🛠️  Windows Tools", self.show_tools), ("⚙️  Processes", self.show_processes), ("ℹ️  About", self.show_about)]:
             ctk.CTkButton(self.nav, text=label, anchor="w", height=38, fg_color="transparent", hover_color="#252531", command=method).pack(fill="x", padx=10, pady=3)
         ctk.CTkLabel(self.nav, text="READY • LOCAL", text_color="#6f8", font=ctk.CTkFont(size=10)).pack(side="bottom", padx=18, pady=18, anchor="w")
 
@@ -139,6 +139,50 @@ class PCApp(ctk.CTk):
         card.grid_columnconfigure((0, 1, 2), weight=1)
         for i, name in enumerate(WindowsTools.TOOLS):
             ctk.CTkButton(card, text=name, height=42, command=lambda n=name: self.open_tool(n)).grid(row=i//3, column=i%3, padx=7, pady=7, sticky="ew")
+
+    def show_processes(self):
+        self.clear()
+        self.heading("Process Manager", "Inspect running processes. Terminate only processes you recognize.")
+        top = ctk.CTkFrame(self.content, fg_color="transparent")
+        top.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
+        top.grid_columnconfigure(0, weight=1)
+        self.process_search = ctk.CTkEntry(top, placeholder_text="Search process...")
+        self.process_search.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        ctk.CTkButton(top, text="↻  REFRESH", width=120, command=self.refresh_processes).grid(row=0, column=1)
+        self.process_status = ctk.CTkLabel(self.content, text="Loading...", text_color="gray")
+        self.process_status.grid(row=3, column=0, sticky="w", padx=12, pady=4)
+        self.process_table = ctk.CTkScrollableFrame(self.content, corner_radius=18)
+        self.process_table.grid(row=4, column=0, sticky="nsew", padx=8, pady=8)
+        self.process_table.grid_columnconfigure(1, weight=1)
+        self.refresh_processes()
+
+    def refresh_processes(self):
+        if not hasattr(self, "process_table") or not self.process_table.winfo_exists():
+            return
+        for widget in self.process_table.winfo_children():
+            widget.destroy()
+        headers = ["PID", "PROCESS", "CPU", "RAM", "ACTION"]
+        for col, label in enumerate(headers):
+            ctk.CTkLabel(self.process_table, text=label, text_color="gray", font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=8, sticky="w")
+        rows = ProcessService.list_processes(self.process_search.get() if hasattr(self, "process_search") else "")
+        for row, item in enumerate(rows[:100], start=1):
+            ctk.CTkLabel(self.process_table, text=str(item["pid"])).grid(row=row, column=0, padx=10, pady=5, sticky="w")
+            ctk.CTkLabel(self.process_table, text=item["name"]).grid(row=row, column=1, padx=10, pady=5, sticky="w")
+            ctk.CTkLabel(self.process_table, text=f'{item["cpu"]:.1f}%').grid(row=row, column=2, padx=10, pady=5, sticky="w")
+            ctk.CTkLabel(self.process_table, text=format_size(item["ram"])).grid(row=row, column=3, padx=10, pady=5, sticky="w")
+            ctk.CTkButton(self.process_table, text="END", width=60, height=28, command=lambda pid=item["pid"]: self.end_process(pid)).grid(row=row, column=4, padx=8, pady=4)
+        self.process_status.configure(text=f"{len(rows)} processes found • showing up to 100")
+
+    def end_process(self, pid):
+        if pid in (0, 4):
+            self.process_status.configure(text="Protected system process.")
+            return
+        dialog = ctk.CTkInputDialog(text=f"Type END to terminate PID {pid}:", title="Confirm process termination")
+        if dialog.get_input() != "END":
+            return
+        ok, message = ProcessService.terminate(pid)
+        self.process_status.configure(text=message)
+        self.after(400, self.refresh_processes)
 
     def show_about(self):
         self.clear()
