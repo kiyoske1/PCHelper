@@ -118,7 +118,7 @@ class PCApp(ctk.CTk):
         self.pin = ctk.CTkButton(bar, text="📌" if self.settings.topmost else "📍", width=34, fg_color="transparent", command=self.toggle_topmost)
         self.pin.grid(row=0, column=2)
         ctk.CTkButton(bar, text="—", width=34, fg_color="transparent", command=self.iconify_window).grid(row=0, column=3)
-        ctk.CTkButton(bar, text="✕", width=34, fg_color="transparent", hover_color="#4a2025", command=self.destroy).grid(row=0, column=4, padx=(0, 10))
+        ctk.CTkButton(bar, text="✕", width=34, fg_color="transparent", hover_color="#4a2025", command=self.close_app).grid(row=0, column=4, padx=(0, 10))
         for widget in (bar, title):
             widget.bind("<Button-1>", self.start_drag)
             widget.bind("<B1-Motion>", self.drag_window)
