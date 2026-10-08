@@ -53,6 +53,38 @@ class PCApp(ctk.CTk):
         self.show_dashboard()
         self._tick()
 
+    def _set_window_icon(self):
+        if APP_ICON.exists():
+            try:
+                self.iconbitmap(str(APP_ICON))
+            except Exception:
+                pass
+
+    def run_async(self, task, on_success, on_error=None):
+        if self._task_running:
+            return
+        self._task_running = True
+
+        def worker():
+            try:
+                result = task()
+            except Exception as error:
+                callback = on_error or self._show_error
+                self.after(0, lambda: callback(error))
+            else:
+                self.after(0, lambda: on_success(result))
+            finally:
+                self.after(0, self._task_finished)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _task_finished(self):
+        self._task_running = False
+
+    def _show_error(self, error):
+        if hasattr(self, "dashboard_status") and self.dashboard_status.winfo_exists():
+            self.dashboard_status.configure(text=f"● ERROR: {error}")
+
     def _build_splash(self):
         splash = ctk.CTkFrame(self, corner_radius=0, fg_color="#111117")
         splash.place(relx=0, rely=0, relwidth=1, relheight=1)
