@@ -103,7 +103,7 @@ class PCApp(ctk.CTk):
         title = ctk.CTkLabel(bar, text="●  PC HELPER", font=ctk.CTkFont(size=14, weight="bold"))
         title.grid(row=0, column=0, padx=(16, 8))
         ctk.CTkLabel(bar, text=f"v{__version__}  •  SYSTEM CONTROL CENTER", text_color="gray").grid(row=0, column=1, sticky="w")
-        self.pin = ctk.CTkButton(bar, text="📌", width=34, fg_color="transparent", command=self.toggle_topmost)
+        self.pin = ctk.CTkButton(bar, text="📌" if self.settings.topmost else "📍", width=34, fg_color="transparent", command=self.toggle_topmost)
         self.pin.grid(row=0, column=2)
         ctk.CTkButton(bar, text="—", width=34, fg_color="transparent", command=self.iconify_window).grid(row=0, column=3)
         ctk.CTkButton(bar, text="✕", width=34, fg_color="transparent", hover_color="#4a2025", command=self.destroy).grid(row=0, column=4, padx=(0, 10))
@@ -263,7 +263,7 @@ class PCApp(ctk.CTk):
 
     def show_settings(self):
         self.clear()
-        self.heading("Settings", "Control the floating window and monitoring refresh rate.")
+        self.heading("Settings", "Preferences are saved locally and restored on next launch.")
         card = ctk.CTkFrame(self.content, corner_radius=18)
         card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
         top_row = ctk.CTkFrame(card, fg_color="transparent")
@@ -271,24 +271,32 @@ class PCApp(ctk.CTk):
         ctk.CTkLabel(top_row, text="Always on top", font=ctk.CTkFont(weight="bold")).pack(side="left")
         self.topmost_switch = ctk.CTkSwitch(top_row, text="", command=self.apply_topmost)
         self.topmost_switch.pack(side="right")
-        self.topmost_switch.select() if self.settings["topmost"] else self.topmost_switch.deselect()
+        if self.settings.topmost:
+            self.topmost_switch.select()
+        else:
+            self.topmost_switch.deselect()
         ctk.CTkLabel(card, text="Monitor refresh interval", text_color="gray").pack(anchor="w", padx=20, pady=(10, 4))
-        self.refresh_label = ctk.CTkLabel(card, text="1.0 second")
+        self.refresh_label = ctk.CTkLabel(card, text="")
         self.refresh_label.pack(anchor="w", padx=20)
         self.refresh_slider = ctk.CTkSlider(card, from_=0.5, to=5.0, number_of_steps=9, command=self.update_refresh_label)
-        self.refresh_slider.set(self.settings["refresh_ms"] / 1000)
+        self.refresh_slider.set(self.settings.refresh_ms / 1000)
+        self.update_refresh_label(self.settings.refresh_ms / 1000)
         self.refresh_slider.pack(fill="x", padx=20, pady=(8, 24))
+        self.settings_status = ctk.CTkLabel(card, text="Settings saved locally.", text_color="gray")
+        self.settings_status.pack(pady=(0, 20))
 
     def apply_topmost(self):
         state = bool(self.topmost_switch.get())
-        self.settings["topmost"] = state
+        self.settings.topmost = state
         self.attributes("-topmost", state)
         self.pin.configure(text="📌" if state else "📍")
+        SettingsStore.save(self.settings)
 
     def update_refresh_label(self, value):
         seconds = float(value)
-        self.settings["refresh_ms"] = int(seconds * 1000)
+        self.settings.refresh_ms = int(seconds * 1000)
         self.refresh_label.configure(text=f"{seconds:.1f} second" + ("" if seconds == 1 else "s"))
+        SettingsStore.save(self.settings)
 
     def show_about(self):
         self.clear()
