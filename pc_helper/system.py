@@ -66,7 +66,7 @@ class CleanupService:
     @classmethod
     def _eligible(cls, item):
         try:
-            if not item.is_file() and not item.is_symlink():
+            if not item.is_file() or item.is_symlink():
                 return False
             return time.time() - item.stat().st_mtime >= cls.MIN_AGE_SECONDS
         except OSError:
