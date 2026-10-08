@@ -4,6 +4,8 @@
 
 **Version 1.0.0**
 
+> Windows builds are generated automatically by GitHub Actions when a `v*` tag is pushed.
+
 ## ✨ Features
 
 - 📊 Live CPU, RAM and disk monitoring
@@ -64,9 +66,9 @@ PCHelper/
 - [x] Tests and lint configuration
 - [x] Process manager
 - [x] Disk analyzer
-- [ ] Settings
-- [ ] Windows installer
-- [ ] Automated GitHub Actions release
+- [x] Settings
+- [x] Windows executable build
+- [x] Automated GitHub Actions release
 
 ## 👤 Author
 
