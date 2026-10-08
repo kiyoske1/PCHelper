@@ -63,7 +63,7 @@ PCHelper/
 - [x] Sidebar navigation
 - [x] Tests and lint configuration
 - [x] Process manager
-- [ ] Disk analyzer
+- [x] Disk analyzer
 - [ ] Settings
 - [ ] Windows installer
 - [ ] Automated GitHub Actions release
