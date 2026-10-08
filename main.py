@@ -1,11 +1,14 @@
+import os
 import platform
 import socket
+import shutil
+import tempfile
 import customtkinter as ctk
 import psutil
 
 
 APP_TITLE = "PC Helper"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 
 
 class PCInfo:
@@ -38,6 +41,78 @@ class PCInfo:
     @staticmethod
     def architecture():
         return platform.machine()
+
+
+class Cleaner:
+    @staticmethod
+    def _folder_size(path):
+        total = 0
+        if not os.path.exists(path):
+            return 0
+
+        for root, dirs, files in os.walk(path, topdown=True):
+            dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(root, d))]
+            for name in files:
+                try:
+                    total += os.path.getsize(os.path.join(root, name))
+                except (OSError, PermissionError):
+                    pass
+        return total
+
+    @staticmethod
+    def temp_paths():
+        paths = [tempfile.gettempdir()]
+        windows_temp = os.environ.get("WINDIR")
+        if windows_temp:
+            paths.append(os.path.join(windows_temp, "Temp"))
+        return list(dict.fromkeys(paths))
+
+    @staticmethod
+    def scan():
+        total = 0
+        for path in Cleaner.temp_paths():
+            total += Cleaner._folder_size(path)
+
+        return total
+
+    @staticmethod
+    def clean():
+        removed_bytes = 0
+        removed_files = 0
+
+        for folder in Cleaner.temp_paths():
+            if not os.path.exists(folder):
+                continue
+
+            for root, dirs, files in os.walk(folder, topdown=False):
+                for name in files:
+                    path = os.path.join(root, name)
+                    try:
+                        size = os.path.getsize(path)
+                        os.remove(path)
+                        removed_bytes += size
+                        removed_files += 1
+                    except (OSError, PermissionError):
+                        pass
+
+                for name in dirs:
+                    path = os.path.join(root, name)
+                    try:
+                        os.rmdir(path)
+                    except (OSError, PermissionError):
+                        pass
+
+        return removed_files, removed_bytes
+
+
+def format_size(size):
+    units = ["B", "KB", "MB", "GB", "TB"]
+    value = float(size)
+
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            return f"{value:.1f} {unit}"
+        value /= 1024
 
 
 class MetricCard(ctk.CTkFrame):
@@ -80,8 +155,8 @@ class PCHelper(ctk.CTk):
         ctk.set_default_color_theme("dark-blue")
 
         self.title(f"{APP_TITLE} {APP_VERSION}")
-        self.geometry("900x650")
-        self.minsize(760, 560)
+        self.geometry("900x780")
+        self.minsize(760, 680)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
@@ -89,6 +164,7 @@ class PCHelper(ctk.CTk):
         self._build_header()
         self._build_system_card()
         self._build_monitor()
+        self._build_cleanup()
 
         psutil.cpu_percent(interval=None)
         self.after(500, self.update_monitor)
@@ -138,7 +214,7 @@ class PCHelper(ctk.CTk):
 
     def _build_monitor(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")
-        frame.grid(row=2, column=0, padx=28, pady=(10, 24), sticky="nsew")
+        frame.grid(row=2, column=0, padx=28, pady=(10, 10), sticky="nsew")
         frame.grid_columnconfigure((0, 1, 2), weight=1)
 
         ctk.CTkLabel(
@@ -161,6 +237,94 @@ class PCHelper(ctk.CTk):
             text_color="gray",
         )
         self.status.grid(row=2, column=0, columnspan=3, pady=(14, 0))
+
+    def _build_cleanup(self):
+        card = ctk.CTkFrame(self, corner_radius=16)
+        card.grid(row=3, column=0, padx=28, pady=(10, 24), sticky="ew")
+        card.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            card,
+            text="🧹 CLEANUP",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).grid(row=0, column=0, columnspan=3, padx=20, pady=(16, 6), sticky="w")
+
+        ctk.CTkLabel(
+            card,
+            text="Temporary Windows files",
+            text_color="gray",
+        ).grid(row=1, column=0, padx=20, pady=(4, 12), sticky="w")
+
+        self.cleanup_size = ctk.CTkLabel(
+            card,
+            text="Not scanned",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        )
+        self.cleanup_size.grid(row=1, column=1, padx=10, pady=(4, 12), sticky="w")
+
+        self.scan_button = ctk.CTkButton(
+            card,
+            text="🔍 SCAN",
+            command=self.scan_cleanup,
+            width=120,
+        )
+        self.scan_button.grid(row=1, column=2, padx=(10, 20), pady=(4, 12))
+
+        self.clean_button = ctk.CTkButton(
+            card,
+            text="🧹 CLEAN",
+            command=self.clean_cleanup,
+            width=120,
+            state="disabled",
+        )
+        self.clean_button.grid(row=2, column=2, padx=(10, 20), pady=(0, 16))
+
+        self.cleanup_status = ctk.CTkLabel(
+            card,
+            text="Scan temporary files before cleaning.",
+            text_color="gray",
+        )
+        self.cleanup_status.grid(
+            row=2, column=0, columnspan=2, padx=20, pady=(0, 16), sticky="w"
+        )
+
+    def scan_cleanup(self):
+        try:
+            size = Cleaner.scan()
+            self.cleanup_size.configure(text=format_size(size))
+            self.cleanup_status.configure(
+                text=f"Found {format_size(size)} of temporary files."
+            )
+            self.clean_button.configure(state="normal" if size > 0 else "disabled")
+        except Exception as error:
+            self.cleanup_status.configure(text=f"Scan error: {error}")
+            self.clean_button.configure(state="disabled")
+
+    def clean_cleanup(self):
+        confirmed = ctk.CTkInputDialog(
+            text="Type CLEAN to confirm temporary file cleanup:",
+            title="Confirm cleanup",
+        ).get_input()
+
+        if confirmed != "CLEAN":
+            self.cleanup_status.configure(text="Cleanup cancelled.")
+            return
+
+        self.clean_button.configure(state="disabled")
+        self.scan_button.configure(state="disabled")
+        self.cleanup_status.configure(text="Cleaning temporary files...")
+        self.update_idletasks()
+
+        try:
+            removed_files, removed_bytes = Cleaner.clean()
+            self.cleanup_size.configure(text="0 B")
+            self.cleanup_status.configure(
+                text=f"Cleaned {format_size(removed_bytes)} from {removed_files} files."
+            )
+        except Exception as error:
+            self.cleanup_status.configure(text=f"Cleanup error: {error}")
+        finally:
+            self.scan_button.configure(state="normal")
 
     def update_monitor(self):
         try:
