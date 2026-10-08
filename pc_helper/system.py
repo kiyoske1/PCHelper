@@ -17,7 +17,7 @@ class SystemService:
     @staticmethod
     def snapshot():
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage(Path.cwd().anchor or "/")
+        disk = psutil.disk_usage(os.environ.get("SystemDrive", Path.cwd().anchor or "/"))
         return {
             "cpu": psutil.cpu_percent(interval=None),
             "ram": memory.percent,
@@ -236,10 +236,17 @@ class ProcessService:
 
     @staticmethod
     def terminate(pid):
+        pid = int(pid)
+        if pid in {0, 4, os.getpid()}:
+            return False, "This process is protected."
         try:
-            process = psutil.Process(int(pid))
+            process = psutil.Process(pid)
             process.terminate()
-            return True, f"Process {pid} terminated."
+            try:
+                process.wait(timeout=1)
+                return True, f"Process {pid} terminated."
+            except psutil.TimeoutExpired:
+                return True, f"Termination requested for PID {pid}."
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as error:
             return False, str(error)
 
