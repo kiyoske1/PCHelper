@@ -35,15 +35,13 @@ jobs:
           ruff check .
 
       - name: Build executable
-        run: pyinstaller --noconfirm --clean --onefile --windowed --icon assets/pc-helper.ico --name PC-Helper main.py
+        run: pyinstaller --noconfirm --clean --onefile --windowed --name PC-Helper main.py
 
       - name: Prepare installer files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force installer/dist | Out-Null
-          New-Item -ItemType Directory -Force installer/assets | Out-Null
           Copy-Item dist/PC-Helper.exe installer/dist/PC-Helper.exe -Force
-          Copy-Item assets/pc-helper.ico installer/assets/pc-helper.ico -Force
 
       - name: Install NSIS
         run: choco install nsis -y --no-progress
