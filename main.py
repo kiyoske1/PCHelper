@@ -178,8 +178,11 @@ class PCApp(ctk.CTk):
         ctk.CTkLabel(card, text=f"Local IP  {NetworkService.local_ip()}", font=ctk.CTkFont(size=16, weight="bold")).pack(padx=24, pady=(24, 8))
         self.net_status = ctk.CTkLabel(card, text="READY", text_color="gray")
         self.net_status.pack()
-        self.net_detail = ctk.CTkLabel(card, text="Target: 8.8.8.8", text_color="gray")
+        self.net_detail = ctk.CTkLabel(card, text="", text_color="gray")
         self.net_detail.pack(pady=4)
+        self.net_target = ctk.CTkEntry(card, placeholder_text="Ping target, e.g. 1.1.1.1")
+        self.net_target.insert(0, "1.1.1.1")
+        self.net_target.pack(fill="x", padx=24, pady=(12, 4))
         row = ctk.CTkFrame(card, fg_color="transparent")
         row.pack(pady=20)
         ctk.CTkButton(row, text="📡  PING", command=self.run_ping, width=140).pack(side="left", padx=5)
@@ -334,12 +337,25 @@ class PCApp(ctk.CTk):
         self.cleanup_status.configure(text=f"Removed {format_size(size)} from {files} files.")
 
     def run_ping(self):
-        ok, message = NetworkService.ping()
+        target = self.net_target.get().strip()
+        self.net_status.configure(text="● TESTING...")
+        self.run_async(lambda: NetworkService.ping(target), self._network_finished)
+
+    def _network_finished(self, result):
+        if not hasattr(self, "net_status") or not self.net_status.winfo_exists():
+            return
+        ok, message = result
         self.net_status.configure(text="● ONLINE" if ok else "● OFFLINE")
         self.net_detail.configure(text=message)
 
     def flush_dns(self):
-        ok, message = NetworkService.flush_dns()
+        self.net_status.configure(text="● WORKING...")
+        self.run_async(NetworkService.flush_dns, self._dns_finished)
+
+    def _dns_finished(self, result):
+        if not hasattr(self, "net_status") or not self.net_status.winfo_exists():
+            return
+        ok, message = result
         self.net_status.configure(text="● DNS READY" if ok else "● ERROR")
         self.net_detail.configure(text=message)
 
