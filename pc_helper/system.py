@@ -148,6 +148,41 @@ class WindowsTools:
 
 
 
+
+class DiskService:
+    @staticmethod
+    def usage(path=None):
+        target = path or (os.environ.get("SystemDrive", "C:") + "\\")
+        usage = psutil.disk_usage(target)
+        return {
+            "path": target,
+            "total": usage.total,
+            "used": usage.used,
+            "free": usage.free,
+            "percent": usage.percent,
+        }
+
+    @staticmethod
+    def largest_entries(path=None, limit=12):
+        root = Path(path or (os.environ.get("SystemDrive", "C:") + "\\"))
+        entries = []
+        try:
+            for item in root.iterdir():
+                try:
+                    if item.is_dir():
+                        size = sum(file.stat().st_size for file in item.rglob("*") if file.is_file())
+                    elif item.is_file():
+                        size = item.stat().st_size
+                    else:
+                        continue
+                    entries.append({"name": item.name or str(item), "path": str(item), "size": size})
+                except (OSError, PermissionError):
+                    continue
+        except (OSError, PermissionError):
+            return []
+        return sorted(entries, key=lambda item: item["size"], reverse=True)[:limit]
+
+
 class ProcessService:
     @staticmethod
     def list_processes(search=""):
