@@ -161,7 +161,7 @@ class WindowsTools:
         "Services": ["services.msc"],
         "System Information": ["msinfo32.exe"],
         "Disk Cleanup": ["cleanmgr.exe"],
-        "Windows Update": ["ms-settings:windowsupdate"],
+        "Windows Update": ["explorer.exe", "ms-settings:windowsupdate"],
     }
 
     @staticmethod
