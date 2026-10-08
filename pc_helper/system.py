@@ -3,6 +3,7 @@ import platform
 import socket
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 import psutil
@@ -28,12 +29,27 @@ class SystemService:
         }
 
     @staticmethod
+    def uptime():
+        seconds = max(0, int(time.time() - psutil.boot_time()))
+        days, seconds = divmod(seconds, 86400)
+        hours, seconds = divmod(seconds, 3600)
+        minutes = seconds // 60
+        parts = []
+        if days:
+            parts.append(f"{days}d")
+        if hours or days:
+            parts.append(f"{hours}h")
+        parts.append(f"{minutes}m")
+        return " ".join(parts)
+
+    @staticmethod
     def details():
         return {
             "CPU": SystemService.cpu_name(),
-            "Windows": f"{platform.system()} {platform.release()}",
+            "OS": f"{platform.system()} {platform.release()}",
             "Architecture": platform.machine(),
             "Hostname": socket.gethostname(),
+            "Uptime": SystemService.uptime(),
         }
 
 
