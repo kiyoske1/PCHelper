@@ -1,12 +1,16 @@
+import threading
+from pathlib import Path
+
 import customtkinter as ctk
 
 from pc_helper import __version__
+from pc_helper.config import AppSettings, SettingsStore
 from pc_helper.system import CleanupService, DiskService, NetworkService, ProcessService, SystemService, WindowsTools, format_size
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
-APP_ICON = "assets/pc-helper.svg"
+APP_ICON = Path(__file__).resolve().parent / "assets" / "pc-helper.ico"
 
 
 class MetricCard(ctk.CTkFrame):
@@ -39,7 +43,11 @@ class PCApp(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         self._drag = (0, 0)
-        self.settings = {"topmost": True, "refresh_ms": 1000}
+        self.settings: AppSettings = SettingsStore.load()
+        self._task_running = False
+        self._closing = False
+        self.attributes("-topmost", self.settings.topmost)
+        self._set_window_icon()
         self._build_splash()
         self._build_shell()
         self.show_dashboard()
@@ -47,7 +55,7 @@ class PCApp(ctk.CTk):
 
     def _build_splash(self):
         splash = ctk.CTkFrame(self, corner_radius=0, fg_color="#111117")
-        splash.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        splash.place(relx=0, rely=0, relwidth=1, relheight=1)
         ctk.CTkLabel(splash, text="▣", font=ctk.CTkFont(size=52, weight="bold"), text_color="#8b6cff").pack(pady=(150, 8))
         ctk.CTkLabel(splash, text="PC HELPER", font=ctk.CTkFont(size=28, weight="bold")).pack()
         ctk.CTkLabel(splash, text=f"v{__version__}  •  Windows utility toolkit", text_color="gray").pack(pady=6)
