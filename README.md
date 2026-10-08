@@ -2,16 +2,15 @@
 
 A lightweight Windows utility toolkit built with Python.
 
-## v0.1.0
+## v0.2.0
 
-Current release provides a simple dark GUI with live system information:
+PC Helper now includes a live system monitor that updates every second:
 
-- CPU
-- RAM
-- Windows version
-- System architecture
-- Hostname
-- Refreshable system information
+- ⚡ CPU usage
+- 🧠 RAM usage
+- 💾 Disk usage
+- 💻 CPU, Windows and system information
+- 🌙 Dark desktop UI
 
 ## Run locally
 
@@ -22,11 +21,12 @@ python main.py
 
 ## Roadmap
 
-- [ ] System monitor
+- [x] System information
+- [x] Live CPU/RAM/Disk monitor
 - [ ] Temporary file cleanup
 - [ ] Network diagnostics
 - [ ] Windows tools launcher
-- [ ] Disk information
+- [ ] Disk tools
 - [ ] Process manager
 - [ ] Settings
 - [ ] Installer
