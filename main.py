@@ -8,7 +8,7 @@ import psutil
 
 
 APP_TITLE = "PC Helper"
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.6.0"
 
 
 class PCInfo:
@@ -251,14 +251,17 @@ class PCHelper(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
 
-        self.title(f"{APP_TITLE} {APP_VERSION}")
-        self.geometry("900x1050")
-        self.minsize(760, 880)
+        self.overrideredirect(True)
+        self.attributes("-topmost", True)
+        self.geometry("820x760+120+80")
+        self.minsize(680, 600)
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
         self._build_header()
+        self._build_body()
+
         self._build_system_card()
         self._build_monitor()
         self._build_cleanup()
@@ -269,24 +272,96 @@ class PCHelper(ctk.CTk):
         self.after(500, self.update_monitor)
 
     def _build_header(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        frame.grid(row=0, column=0, padx=28, pady=(24, 10), sticky="ew")
+        self.titlebar = ctk.CTkFrame(
+            self,
+            height=48,
+            corner_radius=0,
+            fg_color=("#15151c", "#15151c"),
+        )
+        self.titlebar.grid(row=0, column=0, sticky="ew")
+        self.titlebar.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(
-            frame,
-            text="🖥️  PC HELPER",
-            font=ctk.CTkFont(size=28, weight="bold"),
-        ).pack(anchor="w")
+        self.title_label = ctk.CTkLabel(
+            self.titlebar,
+            text=f"●  {APP_TITLE}",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        )
+        self.title_label.grid(row=0, column=0, padx=(16, 8), pady=8)
 
-        ctk.CTkLabel(
-            frame,
-            text=f"Windows utility toolkit  •  v{APP_VERSION}  •  CONTROL CENTER",
+        self.subtitle_label = ctk.CTkLabel(
+            self.titlebar,
+            text=f"v{APP_VERSION}  •  LIVE CONTROL CENTER",
             text_color="gray",
-        ).pack(anchor="w", pady=(2, 0))
+            font=ctk.CTkFont(size=11),
+        )
+        self.subtitle_label.grid(row=0, column=1, padx=8, pady=8, sticky="w")
+
+        self.pin_button = ctk.CTkButton(
+            self.titlebar,
+            text="📌",
+            width=32,
+            height=30,
+            fg_color="transparent",
+            hover_color=("#252531", "#252531"),
+            command=self.toggle_topmost,
+        )
+        self.pin_button.grid(row=0, column=2, padx=2)
+
+        ctk.CTkButton(
+            self.titlebar,
+            text="—",
+            width=32,
+            height=30,
+            fg_color="transparent",
+            hover_color=("#252531", "#252531"),
+            command=self.iconify_window,
+        ).grid(row=0, column=3, padx=2)
+
+        ctk.CTkButton(
+            self.titlebar,
+            text="✕",
+            width=32,
+            height=30,
+            fg_color="transparent",
+            hover_color=("#4a2025", "#4a2025"),
+            command=self.destroy,
+        ).grid(row=0, column=4, padx=(2, 10))
+
+        for widget in (self.titlebar, self.title_label, self.subtitle_label):
+            widget.bind("<Button-1>", self.start_drag)
+            widget.bind("<B1-Motion>", self.drag_window)
+
+    def _build_body(self):
+        self.body = ctk.CTkScrollableFrame(
+            self,
+            corner_radius=0,
+            fg_color="transparent",
+        )
+        self.body.grid(row=1, column=0, padx=0, pady=0, sticky="nsew")
+        self.body.grid_columnconfigure(0, weight=1)
+
+    def start_drag(self, event):
+        self._drag_x = event.x_root - self.winfo_x()
+        self._drag_y = event.y_root - self.winfo_y()
+
+    def drag_window(self, event):
+        x = event.x_root - self._drag_x
+        y = event.y_root - self._drag_y
+        self.geometry(f"+{x}+{y}")
+
+    def toggle_topmost(self):
+        current = self.attributes("-topmost")
+        self.attributes("-topmost", not current)
+        self.pin_button.configure(text="📌" if not current else "📍")
+
+    def iconify_window(self):
+        self.overrideredirect(False)
+        self.iconify()
+        self.after(100, lambda: self.overrideredirect(True))
 
     def _build_system_card(self):
-        card = ctk.CTkFrame(self, corner_radius=16)
-        card.grid(row=1, column=0, padx=28, pady=10, sticky="ew")
+        card = ctk.CTkFrame(self.body, corner_radius=16)
+        card.grid(row=0, column=0, padx=18, pady=(18, 8), sticky="ew")
         card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -311,8 +386,8 @@ class PCHelper(ctk.CTk):
             )
 
     def _build_monitor(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        frame.grid(row=2, column=0, padx=28, pady=(10, 10), sticky="nsew")
+        frame = ctk.CTkFrame(self.body, fg_color="transparent")
+        frame.grid(row=1, column=0, padx=18, pady=8, sticky="ew")
         frame.grid_columnconfigure((0, 1, 2), weight=1)
 
         ctk.CTkLabel(
@@ -337,8 +412,8 @@ class PCHelper(ctk.CTk):
         self.status.grid(row=2, column=0, columnspan=3, pady=(14, 0))
 
     def _build_cleanup(self):
-        card = ctk.CTkFrame(self, corner_radius=16)
-        card.grid(row=3, column=0, padx=28, pady=(10, 10), sticky="ew")
+        card = ctk.CTkFrame(self.body, corner_radius=16)
+        card.grid(row=2, column=0, padx=18, pady=8, sticky="ew")
         card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -387,8 +462,8 @@ class PCHelper(ctk.CTk):
         )
 
     def _build_network(self):
-        card = ctk.CTkFrame(self, corner_radius=16)
-        card.grid(row=4, column=0, padx=28, pady=(10, 10), sticky="ew")
+        card = ctk.CTkFrame(self.body, corner_radius=16)
+        card.grid(row=3, column=0, padx=18, pady=8, sticky="ew")
         card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
@@ -440,8 +515,8 @@ class PCHelper(ctk.CTk):
         self.after(100, self.load_network_info)
 
     def _build_windows_tools(self):
-        card = ctk.CTkFrame(self, corner_radius=16)
-        card.grid(row=5, column=0, padx=28, pady=(10, 24), sticky="ew")
+        card = ctk.CTkFrame(self.body, corner_radius=16)
+        card.grid(row=4, column=0, padx=18, pady=(8, 18), sticky="ew")
         card.grid_columnconfigure((0, 1, 2), weight=1)
 
         ctk.CTkLabel(
