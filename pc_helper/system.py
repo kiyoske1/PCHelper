@@ -54,6 +54,7 @@ class SystemService:
 
 
 class CleanupService:
+    MIN_AGE_SECONDS = 3600
     @staticmethod
     def paths():
         paths = [Path(tempfile.gettempdir())]
@@ -62,18 +63,27 @@ class CleanupService:
             paths.append(Path(windir) / "Temp")
         return list(dict.fromkeys(paths))
 
-    @staticmethod
-    def scan():
+    @classmethod
+    def _eligible(cls, item):
+        try:
+            if not item.is_file() and not item.is_symlink():
+                return False
+            return time.time() - item.stat().st_mtime >= cls.MIN_AGE_SECONDS
+        except OSError:
+            return False
+
+    @classmethod
+    def scan(cls):
         total = 0
-        for folder in CleanupService.paths():
+        for folder in cls.paths():
             if not folder.exists():
                 continue
             for item in folder.rglob("*"):
-                try:
-                    if item.is_file():
+                if cls._eligible(item):
+                    try:
                         total += item.stat().st_size
-                except OSError:
-                    continue
+                    except OSError:
+                        continue
         return total
 
     @staticmethod
