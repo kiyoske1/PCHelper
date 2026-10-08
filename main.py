@@ -1,14 +1,14 @@
 import os
 import platform
 import socket
-import shutil
+import subprocess
 import tempfile
 import customtkinter as ctk
 import psutil
 
 
 APP_TITLE = "PC Helper"
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 
 
 class PCInfo:
@@ -51,7 +51,10 @@ class Cleaner:
             return 0
 
         for root, dirs, files in os.walk(path, topdown=True):
-            dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(root, d))]
+            dirs[:] = [
+                d for d in dirs
+                if not os.path.islink(os.path.join(root, d))
+            ]
             for name in files:
                 try:
                     total += os.path.getsize(os.path.join(root, name))
@@ -69,11 +72,7 @@ class Cleaner:
 
     @staticmethod
     def scan():
-        total = 0
-        for path in Cleaner.temp_paths():
-            total += Cleaner._folder_size(path)
-
-        return total
+        return sum(Cleaner._folder_size(path) for path in Cleaner.temp_paths())
 
     @staticmethod
     def clean():
@@ -105,6 +104,65 @@ class Cleaner:
         return removed_files, removed_bytes
 
 
+class NetworkTools:
+    @staticmethod
+    def ping(host="8.8.8.8"):
+        try:
+            result = subprocess.run(
+                ["ping", "-n", "1", "-w", "2000", host],
+                capture_output=True,
+                text=True,
+                timeout=4,
+            )
+
+            output = result.stdout
+            if result.returncode != 0:
+                return False, "No response"
+
+            for line in output.splitlines():
+                if "Average" in line or "Среднее" in line:
+                    return True, line.strip()
+
+            return True, "Host is reachable"
+        except (subprocess.SubprocessError, OSError):
+            return False, "Ping failed"
+
+    @staticmethod
+    def ip_address():
+        try:
+            result = subprocess.run(
+                ["ipconfig"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=5,
+            )
+            for line in result.stdout.splitlines():
+                if "IPv4" in line or "IPv4-адрес" in line:
+                    return line.split(":", 1)[-1].strip()
+            return "Not found"
+        except (subprocess.SubprocessError, OSError):
+            return "Unavailable"
+
+    @staticmethod
+    def flush_dns():
+        try:
+            result = subprocess.run(
+                ["ipconfig", "/flushdns"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=5,
+            )
+            if result.returncode == 0:
+                return True, "DNS cache flushed successfully."
+            return False, "Could not flush DNS cache."
+        except (subprocess.SubprocessError, OSError):
+            return False, "DNS command failed."
+
+
 def format_size(size):
     units = ["B", "KB", "MB", "GB", "TB"]
     value = float(size)
@@ -133,11 +191,25 @@ class MetricCard(ctk.CTkFrame):
         )
         self.value.grid(row=1, column=0, padx=18, sticky="w")
 
-        self.detail = ctk.CTkLabel(self, text="Loading...", text_color="gray")
+        self.detail = ctk.CTkLabel(
+            self,
+            text="Loading...",
+            text_color="gray",
+        )
         self.detail.grid(row=2, column=0, padx=18, pady=(2, 8), sticky="w")
 
-        self.progress = ctk.CTkProgressBar(self, height=8, corner_radius=4)
-        self.progress.grid(row=3, column=0, padx=18, pady=(0, 16), sticky="ew")
+        self.progress = ctk.CTkProgressBar(
+            self,
+            height=8,
+            corner_radius=4,
+        )
+        self.progress.grid(
+            row=3,
+            column=0,
+            padx=18,
+            pady=(0, 16),
+            sticky="ew",
+        )
         self.progress.set(0)
 
     def update(self, percent, detail):
@@ -155,8 +227,8 @@ class PCHelper(ctk.CTk):
         ctk.set_default_color_theme("dark-blue")
 
         self.title(f"{APP_TITLE} {APP_VERSION}")
-        self.geometry("900x780")
-        self.minsize(760, 680)
+        self.geometry("900x900")
+        self.minsize(760, 760)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
@@ -165,13 +237,20 @@ class PCHelper(ctk.CTk):
         self._build_system_card()
         self._build_monitor()
         self._build_cleanup()
+        self._build_network()
 
         psutil.cpu_percent(interval=None)
         self.after(500, self.update_monitor)
 
     def _build_header(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")
-        frame.grid(row=0, column=0, padx=28, pady=(24, 10), sticky="ew")
+        frame.grid(
+            row=0,
+            column=0,
+            padx=28,
+            pady=(24, 10),
+            sticky="ew",
+        )
 
         ctk.CTkLabel(
             frame,
@@ -187,15 +266,27 @@ class PCHelper(ctk.CTk):
 
     def _build_system_card(self):
         card = ctk.CTkFrame(self, corner_radius=16)
-        card.grid(row=1, column=0, padx=28, pady=10, sticky="ew")
-
+        card.grid(
+            row=1,
+            column=0,
+            padx=28,
+            pady=10,
+            sticky="ew",
+        )
         card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
             card,
             text="SYSTEM",
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).grid(row=0, column=0, columnspan=2, padx=20, pady=(16, 10), sticky="w")
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            padx=20,
+            pady=(16, 10),
+            sticky="w",
+        )
 
         info = [
             ("CPU", PCInfo.cpu_name()),
@@ -205,62 +296,135 @@ class PCHelper(ctk.CTk):
         ]
 
         for row, (name, value) in enumerate(info, start=1):
-            ctk.CTkLabel(card, text=name, text_color="gray").grid(
-                row=row, column=0, padx=(20, 12), pady=5, sticky="w"
+            ctk.CTkLabel(
+                card,
+                text=name,
+                text_color="gray",
+            ).grid(
+                row=row,
+                column=0,
+                padx=(20, 12),
+                pady=5,
+                sticky="w",
             )
-            ctk.CTkLabel(card, text=value, anchor="w").grid(
-                row=row, column=1, padx=(0, 20), pady=5, sticky="ew"
+            ctk.CTkLabel(
+                card,
+                text=value,
+                anchor="w",
+            ).grid(
+                row=row,
+                column=1,
+                padx=(0, 20),
+                pady=5,
+                sticky="ew",
             )
 
     def _build_monitor(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")
-        frame.grid(row=2, column=0, padx=28, pady=(10, 10), sticky="nsew")
+        frame.grid(
+            row=2,
+            column=0,
+            padx=28,
+            pady=(10, 10),
+            sticky="nsew",
+        )
         frame.grid_columnconfigure((0, 1, 2), weight=1)
 
         ctk.CTkLabel(
             frame,
             text="📊 LIVE MONITOR",
             font=ctk.CTkFont(size=16, weight="bold"),
-        ).grid(row=0, column=0, columnspan=3, pady=(0, 10), sticky="w")
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=3,
+            pady=(0, 10),
+            sticky="w",
+        )
 
         self.cpu_card = MetricCard(frame, "CPU", "⚡")
         self.ram_card = MetricCard(frame, "RAM", "🧠")
         self.disk_card = MetricCard(frame, "DISK", "💾")
 
-        self.cpu_card.grid(row=1, column=0, padx=5, sticky="nsew")
-        self.ram_card.grid(row=1, column=1, padx=5, sticky="nsew")
-        self.disk_card.grid(row=1, column=2, padx=5, sticky="nsew")
+        self.cpu_card.grid(
+            row=1,
+            column=0,
+            padx=5,
+            sticky="nsew",
+        )
+        self.ram_card.grid(
+            row=1,
+            column=1,
+            padx=5,
+            sticky="nsew",
+        )
+        self.disk_card.grid(
+            row=1,
+            column=2,
+            padx=5,
+            sticky="nsew",
+        )
 
         self.status = ctk.CTkLabel(
             frame,
             text="● LIVE  •  updating every 1 second",
             text_color="gray",
         )
-        self.status.grid(row=2, column=0, columnspan=3, pady=(14, 0))
+        self.status.grid(
+            row=2,
+            column=0,
+            columnspan=3,
+            pady=(14, 0),
+        )
 
     def _build_cleanup(self):
         card = ctk.CTkFrame(self, corner_radius=16)
-        card.grid(row=3, column=0, padx=28, pady=(10, 24), sticky="ew")
+        card.grid(
+            row=3,
+            column=0,
+            padx=28,
+            pady=(10, 10),
+            sticky="ew",
+        )
         card.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
             card,
             text="🧹 CLEANUP",
             font=ctk.CTkFont(size=16, weight="bold"),
-        ).grid(row=0, column=0, columnspan=3, padx=20, pady=(16, 6), sticky="w")
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=3,
+            padx=20,
+            pady=(16, 6),
+            sticky="w",
+        )
 
         ctk.CTkLabel(
             card,
             text="Temporary Windows files",
             text_color="gray",
-        ).grid(row=1, column=0, padx=20, pady=(4, 12), sticky="w")
+        ).grid(
+            row=1,
+            column=0,
+            padx=20,
+            pady=(4, 12),
+            sticky="w",
+        )
 
         self.cleanup_size = ctk.CTkLabel(
             card,
             text="Not scanned",
             font=ctk.CTkFont(size=16, weight="bold"),
         )
-        self.cleanup_size.grid(row=1, column=1, padx=10, pady=(4, 12), sticky="w")
+        self.cleanup_size.grid(
+            row=1,
+            column=1,
+            padx=10,
+            pady=(4, 12),
+            sticky="w",
+        )
 
         self.scan_button = ctk.CTkButton(
             card,
@@ -268,7 +432,12 @@ class PCHelper(ctk.CTk):
             command=self.scan_cleanup,
             width=120,
         )
-        self.scan_button.grid(row=1, column=2, padx=(10, 20), pady=(4, 12))
+        self.scan_button.grid(
+            row=1,
+            column=2,
+            padx=(10, 20),
+            pady=(4, 12),
+        )
 
         self.clean_button = ctk.CTkButton(
             card,
@@ -277,7 +446,12 @@ class PCHelper(ctk.CTk):
             width=120,
             state="disabled",
         )
-        self.clean_button.grid(row=2, column=2, padx=(10, 20), pady=(0, 16))
+        self.clean_button.grid(
+            row=2,
+            column=2,
+            padx=(10, 20),
+            pady=(0, 16),
+        )
 
         self.cleanup_status = ctk.CTkLabel(
             card,
@@ -285,8 +459,139 @@ class PCHelper(ctk.CTk):
             text_color="gray",
         )
         self.cleanup_status.grid(
-            row=2, column=0, columnspan=2, padx=20, pady=(0, 16), sticky="w"
+            row=2,
+            column=0,
+            columnspan=2,
+            padx=20,
+            pady=(0, 16),
+            sticky="w",
         )
+
+    def _build_network(self):
+        card = ctk.CTkFrame(self, corner_radius=16)
+        card.grid(
+            row=4,
+            column=0,
+            padx=28,
+            pady=(10, 24),
+            sticky="ew",
+        )
+        card.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            card,
+            text="🌐 NETWORK DIAGNOSTICS",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=3,
+            padx=20,
+            pady=(16, 10),
+            sticky="w",
+        )
+
+        self.network_status = ctk.CTkLabel(
+            card,
+            text="● READY",
+            text_color="gray",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        )
+        self.network_status.grid(
+            row=1,
+            column=0,
+            padx=20,
+            pady=6,
+            sticky="w",
+        )
+
+        self.ip_label = ctk.CTkLabel(
+            card,
+            text="Local IP: detecting...",
+            text_color="gray",
+        )
+        self.ip_label.grid(
+            row=1,
+            column=1,
+            padx=10,
+            pady=6,
+            sticky="w",
+        )
+
+        self.ping_button = ctk.CTkButton(
+            card,
+            text="📡 PING",
+            command=self.run_ping,
+            width=120,
+        )
+        self.ping_button.grid(
+            row=1,
+            column=2,
+            padx=(10, 20),
+            pady=6,
+        )
+
+        self.dns_button = ctk.CTkButton(
+            card,
+            text="🔄 FLUSH DNS",
+            command=self.flush_dns,
+            width=120,
+        )
+        self.dns_button.grid(
+            row=2,
+            column=2,
+            padx=(10, 20),
+            pady=(4, 16),
+        )
+
+        self.network_details = ctk.CTkLabel(
+            card,
+            text="Press PING to test connectivity to 8.8.8.8.",
+            text_color="gray",
+        )
+        self.network_details.grid(
+            row=2,
+            column=0,
+            columnspan=2,
+            padx=20,
+            pady=(4, 16),
+            sticky="w",
+        )
+
+        self.after(100, self.load_network_info)
+
+    def load_network_info(self):
+        self.ip_label.configure(
+            text=f"Local IP: {NetworkTools.ip_address()}"
+        )
+
+    def run_ping(self):
+        self.ping_button.configure(state="disabled")
+        self.network_status.configure(text="● TESTING...")
+        self.network_details.configure(text="Pinging 8.8.8.8...")
+        self.update_idletasks()
+
+        try:
+            success, message = NetworkTools.ping()
+            if success:
+                self.network_status.configure(text="● ONLINE")
+                self.network_details.configure(text=message)
+            else:
+                self.network_status.configure(text="● OFFLINE")
+                self.network_details.configure(text=message)
+        finally:
+            self.ping_button.configure(state="normal")
+
+    def flush_dns(self):
+        self.network_status.configure(text="● WORKING...")
+        self.network_details.configure(text="Flushing DNS cache...")
+        self.update_idletasks()
+
+        success, message = NetworkTools.flush_dns()
+        self.network_status.configure(
+            text="● DNS READY" if success else "● ERROR"
+        )
+        self.network_details.configure(text=message)
 
     def scan_cleanup(self):
         try:
@@ -295,7 +600,9 @@ class PCHelper(ctk.CTk):
             self.cleanup_status.configure(
                 text=f"Found {format_size(size)} of temporary files."
             )
-            self.clean_button.configure(state="normal" if size > 0 else "disabled")
+            self.clean_button.configure(
+                state="normal" if size > 0 else "disabled"
+            )
         except Exception as error:
             self.cleanup_status.configure(text=f"Scan error: {error}")
             self.clean_button.configure(state="disabled")
@@ -319,7 +626,10 @@ class PCHelper(ctk.CTk):
             removed_files, removed_bytes = Cleaner.clean()
             self.cleanup_size.configure(text="0 B")
             self.cleanup_status.configure(
-                text=f"Cleaned {format_size(removed_bytes)} from {removed_files} files."
+                text=(
+                    f"Cleaned {format_size(removed_bytes)} "
+                    f"from {removed_files} files."
+                )
             )
         except Exception as error:
             self.cleanup_status.configure(text=f"Cleanup error: {error}")
@@ -333,10 +643,18 @@ class PCHelper(ctk.CTk):
             disk_used, disk_total, disk_percent = PCInfo.disk()
 
             self.cpu_card.update(cpu, f"{cpu:.1f}% usage")
-            self.ram_card.update(ram_percent, f"{ram_used:.1f} / {ram_total:.1f} GB")
-            self.disk_card.update(disk_percent, f"{disk_used:.1f} / {disk_total:.1f} GB")
+            self.ram_card.update(
+                ram_percent,
+                f"{ram_used:.1f} / {ram_total:.1f} GB",
+            )
+            self.disk_card.update(
+                disk_percent,
+                f"{disk_used:.1f} / {disk_total:.1f} GB",
+            )
 
-            self.status.configure(text="● LIVE  •  updating every 1 second")
+            self.status.configure(
+                text="● LIVE  •  updating every 1 second"
+            )
         except Exception as error:
             self.status.configure(text=f"Monitor error: {error}")
 
