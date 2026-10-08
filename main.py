@@ -70,11 +70,23 @@ class PCApp(ctk.CTk):
                 result = task()
             except Exception as error:
                 callback = on_error or self._show_error
-                self.after(0, lambda: callback(error))
+                try:
+                    if not self._closing and self.winfo_exists():
+                        self.after(0, lambda: callback(error))
+                except Exception:
+                    pass
             else:
-                self.after(0, lambda: on_success(result))
+                try:
+                    if not self._closing and self.winfo_exists():
+                        self.after(0, lambda: on_success(result))
+                except Exception:
+                    pass
             finally:
-                self.after(0, self._task_finished)
+                try:
+                    if not self._closing and self.winfo_exists():
+                        self.after(0, self._task_finished)
+                except Exception:
+                    pass
 
         threading.Thread(target=worker, daemon=True).start()
 
