@@ -195,7 +195,9 @@ class PCApp(ctk.CTk):
         card.grid(row=2, column=0, sticky="ew", padx=8, pady=8)
         card.grid_columnconfigure((0, 1, 2), weight=1)
         for i, name in enumerate(WindowsTools.TOOLS):
-            ctk.CTkButton(card, text=name, height=42, command=lambda n=name: self.open_tool(n)).grid(row=i//3, column=i%3, padx=7, pady=7, sticky="ew")
+            ctk.CTkButton(card, text=name, height=42, command=lambda n=name: self.open_tool(n)).grid(row=i // 3, column=i % 3, padx=7, pady=7, sticky="ew")
+        self.tools_status = ctk.CTkLabel(self.content, text="READY", text_color="gray")
+        self.tools_status.grid(row=3, column=0, pady=8)
 
     def show_disk(self):
         self.clear()
@@ -361,8 +363,8 @@ class PCApp(ctk.CTk):
 
     def open_tool(self, name):
         ok, message = WindowsTools.open_tool(name)
-        if hasattr(self, "net_status"):
-            self.net_status.configure(text=message if ok else f"ERROR: {message}")
+        if hasattr(self, "tools_status") and self.tools_status.winfo_exists():
+            self.tools_status.configure(text=message if ok else f"ERROR: {message}")
 
     def _tick(self):
         if hasattr(self, "cpu"):
