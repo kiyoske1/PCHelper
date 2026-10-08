@@ -2,10 +2,16 @@
 
 A lightweight Windows utility toolkit built with Python.
 
-## v0.5.0
+## v0.6.0
 
-PC Helper is becoming a compact Windows control center:
+PC Helper is now a compact floating Windows control center:
 
+- 🪟 Borderless floating window
+- 🖱️ Drag the app anywhere on the desktop
+- 📌 Always-on-top toggle
+- ➖ Minimize button
+- ✕ Custom close button
+- 📜 Scrollable compact interface
 - ⚡ Live CPU usage
 - 🧠 Live RAM usage
 - 💾 Live disk usage
@@ -24,7 +30,7 @@ PC Helper is becoming a compact Windows control center:
 - ℹ️ System Information
 - 🧹 Disk Cleanup
 - 🔄 Windows Update
-- 🌙 Dark desktop UI
+- 🌙 Dark minimal UI
 
 ## Run locally
 
@@ -40,6 +46,7 @@ python main.py
 - [x] Temporary file cleanup
 - [x] Network diagnostics
 - [x] Windows tools launcher
+- [x] Floating desktop UI
 - [ ] Disk tools
 - [ ] Process manager
 - [ ] Settings
