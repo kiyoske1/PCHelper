@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -17,24 +20,43 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install pyinstaller
 
+      - name: Verify code
+        run: |
+          python -m pytest
+          ruff check .
+
       - name: Build executable
-        run: pyinstaller --noconfirm --clean --onefile --windowed --name PC-Helper main.py
+        run: pyinstaller --noconfirm --clean --onefile --windowed --icon assets/pc-helper.ico --name PC-Helper main.py
+
+      - name: Prepare installer files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force installer/dist | Out-Null
+          New-Item -ItemType Directory -Force installer/assets | Out-Null
+          Copy-Item dist/PC-Helper.exe installer/dist/PC-Helper.exe -Force
+          Copy-Item assets/pc-helper.ico installer/assets/pc-helper.ico -Force
 
       - name: Install NSIS
-        run: choco install nsis -y
+        run: choco install nsis -y --no-progress
 
       - name: Build installer
         shell: cmd
+        run: makensis installer\PC-Helper.nsi
+
+      - name: Verify artifacts
+        shell: pwsh
         run: |
-          copy dist\PC-Helper.exe installer\dist\PC-Helper.exe
-          makensis installer\PC-Helper.nsi
+          if (!(Test-Path "dist/PC-Helper.exe")) { throw "Executable was not created" }
+          if (!(Test-Path "installer/PC-Helper-Setup.exe")) { throw "Installer was not created" }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -43,6 +65,7 @@ jobs:
           path: |
             dist/PC-Helper.exe
             installer/PC-Helper-Setup.exe
+          if-no-files-found: error
 
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
