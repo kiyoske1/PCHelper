@@ -27,21 +27,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install pyinstaller
+          pip install pyinstaller cairosvg pillow
 
       - name: Verify code
         run: |
           python -m pytest
           ruff check .
 
+      - name: Generate Windows icon
+        run: python -c "import io,cairosvg; from PIL import Image; png=cairosvg.svg2png(url='assets/pc-helper.svg',output_width=256,output_height=256); Image.open(io.BytesIO(png)).convert('RGBA').save('assets/pc-helper.ico',format='ICO',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+
       - name: Build executable
-        run: pyinstaller --noconfirm --clean --onefile --windowed --name PC-Helper main.py
+        run: pyinstaller --noconfirm --clean --onefile --windowed --icon assets/pc-helper.ico --name PC-Helper main.py
 
       - name: Prepare installer files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force installer/dist | Out-Null
+          New-Item -ItemType Directory -Force installer/assets | Out-Null
           Copy-Item dist/PC-Helper.exe installer/dist/PC-Helper.exe -Force
+          Copy-Item assets/pc-helper.ico installer/assets/pc-helper.ico -Force
 
       - name: Install NSIS
         run: choco install nsis -y --no-progress
