@@ -147,6 +147,39 @@ class WindowsTools:
             return False, str(error)
 
 
+
+class ProcessService:
+    @staticmethod
+    def list_processes(search=""):
+        rows = []
+        query = search.strip().lower()
+        for process in psutil.process_iter(["pid", "name", "username", "memory_info"]):
+            try:
+                name = process.info["name"] or "Unknown"
+                if query and query not in name.lower():
+                    continue
+                rows.append({
+                    "pid": process.info["pid"],
+                    "name": name,
+                    "user": process.info["username"] or "System",
+                    "ram": process.info["memory_info"].rss if process.info["memory_info"] else 0,
+                    "cpu": process.cpu_percent(None),
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        rows.sort(key=lambda item: (item["cpu"], item["ram"]), reverse=True)
+        return rows
+
+    @staticmethod
+    def terminate(pid):
+        try:
+            process = psutil.Process(int(pid))
+            process.terminate()
+            return True, f"Process {pid} terminated."
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as error:
+            return False, str(error)
+
+
 def format_size(value):
     value = float(value)
     for unit in ("B", "KB", "MB", "GB", "TB"):
