@@ -340,7 +340,7 @@ class PCApp(ctk.CTk):
             self.cpu.update(data["cpu"], f'{data["cpu"]:.1f}% usage')
             self.ram.update(data["ram"], f'{format_size(data["ram_used"])} / {format_size(data["ram_total"])}')
             self.disk.update(data["disk"], f'{format_size(data["disk_used"])} / {format_size(data["disk_total"])}')
-        self.after(self.settings["refresh_ms"], self._tick)
+        self.after(self.settings.refresh_ms, self._tick)
 
     def start_drag(self, event):
         self._drag = (event.x_root - self.winfo_x(), event.y_root - self.winfo_y())
@@ -349,9 +349,11 @@ class PCApp(ctk.CTk):
         self.geometry(f"+{event.x_root-self._drag[0]}+{event.y_root-self._drag[1]}")
 
     def toggle_topmost(self):
-        state = not self.attributes("-topmost")
+        state = not bool(self.settings.topmost)
+        self.settings.topmost = state
         self.attributes("-topmost", state)
         self.pin.configure(text="📌" if state else "📍")
+        SettingsStore.save(self.settings)
 
     def iconify_window(self):
         self.overrideredirect(False)
